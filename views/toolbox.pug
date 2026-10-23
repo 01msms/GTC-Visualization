@@ -1,66 +1,189 @@
+mixin numberInput(name, label, placeholder='', min=null, step='any')
+    label.toolbox-field
+        span= label
+        input(type='number' name=name placeholder=placeholder min=min step=step)
+mixin rangeInputs(a, b, title, note, minimum=0)
+    .toolbox-range
+        p.toolbox-label= title
+        .toolbox-inline-fields
+            input(type='number' name=a min=minimum step='any' placeholder='下限 · 自动' aria-label=title+'下限')
+            input(type='number' name=b min=minimum step='any' placeholder='上限 · 自动' aria-label=title+'上限')
+        if note
+            p.toolbox-note= note
 doctype html
-html(lang="zh-CN")
+html(lang='zh-CN')
     head
-        meta(charset="UTF-8")
-        meta(name="viewport", content="width=device-width, initial-scale=1.0")
-        script(src="javascripts/theme.js")
-        script(src="toolbox.js" defer)
-        link(rel="stylesheet", href="stylesheets/theme.css")
-        link(rel="stylesheet", href="stylesheets/toolbox.css")
+        meta(charset='UTF-8')
+        meta(name='viewport' content='width=device-width, initial-scale=1')
         title smiao 的工具箱 · GTC-Visualization
+        script(src='javascripts/theme.js')
+        script(src='libs/plotly/plotly-custom.min.js' defer)
+        script(src='javascripts/toolbox.js' defer)
+        link(rel='stylesheet' href='stylesheets/theme.css')
+        link(rel='stylesheet' href='stylesheets/toolbox.css')
     body.home-page
         main.toolbox-page
-            .theme-settings(data-theme-control)
-            a.toolbox-back(href="/") ← 返回 GTC 输出目录
+            .toolbox-topbar
+                a.toolbox-back(href='/') ← GTC 输出目录
+                .theme-settings(data-theme-control)
             header.toolbox-header
-                p.toolbox-eyebrow GTC-VISUALIZATION
-                h1 smiao 的工具箱
-                p 读取已扫描到的 GTC 算例，生成 D_i、D_f、Γ_i 或 Γ_f 时空图及径向平均曲线。
-            form#toolbox-form(method="POST", action="/toolbox")
-                .toolbox-form-grid
-                    label(for="output-folder") GTC 算例目录
-                    select#output-folder(name="output_folder", required)
-                        if outputs.length
-                            each output in outputs
-                                option(value=output.value data-has-profile=output.hasProfile selected=(form.output_folder === output.value))= output.label + (output.hasProfile ? " · 有 profile.dat" : "")
-                        else
-                            option(value="") 尚未找到同时包含 gtc.out 和 data1d.out 的目录
-                    label(for="quantity") 物理量
-                    select#quantity(name="quantity")
-                        option(value="di" selected=(form.quantity === "di")) D_i 扩散系数
-                        option(value="gamma" selected=(form.quantity === "gamma")) Γ_i 粒子通量
-                        option(value="df" selected=(form.quantity === "df")) D_f 快离子扩散系数
-                        option(value="gammaf" selected=(form.quantity === "gammaf")) Γ_f 快离子粒子通量（需要 profile.dat）
-                    label(for="units") 扩散系数单位
-                    select#units(name="units")
-                        option(value="normalized" selected=(form.units !== "si")) T_ref/(eB₀)（归一化）
-                        option(value="si" selected=(form.units === "si")) m²/s（SI）
-                    label(for="mean-rmin") 径向平均范围 r/a
-                    .toolbox-inline-fields
-                        input#mean-rmin(type="number", name="mean_rmin", min="0", step="any", placeholder="最小值", value=form.mean_rmin)
-                        input#mean-rmax(type="number", name="mean_rmax", min="0", step="any", placeholder="最大值", value=form.mean_rmax)
-                    label(for="time-min") 时间显示范围 R₀/Cₛ
-                    .toolbox-inline-fields
-                        input#time-min(type="number", name="time_min", min="0", step="any", placeholder="起点", value=form.time_min)
-                        input#time-max(type="number", name="time_max", min="0", step="any", placeholder="终点", value=form.time_max)
-                    label(for="start-record") 统计记录范围（包含端点）
-                    .toolbox-inline-fields
-                        input#start-record(type="number", name="start", min="1", step="1", placeholder="起始记录", value=form.start)
-                        input#end-record(type="number", name="end", min="1", step="1", placeholder="结束记录", value=form.end)
-                    label(for="smooth-window") 平滑窗口（正奇数，1 表示关闭）
-                    input#smooth-window(type="number", name="smooth_window", min="1", max="501", step="2", value=form.smooth_window || "1")
-                p.toolbox-help 统计范围留空时沿用 Python 工具默认记录（1600–2000，超出数据末尾时自动收至末条记录）。D_f / Γ_f 需要 data1d.out 含第三物种；Γ_f 还需要同一算例目录中的 profile.dat。
-                if error
-                    p.toolbox-error(role="alert")= error
-                button#toolbox-submit(type="submit", disabled=!outputs.length) 生成时空图
-                p#toolbox-progress(role="status", aria-live="polite")
-            if result
-                section.toolbox-result(aria-labelledby="toolbox-result-title")
-                    h2#toolbox-result-title 图已生成
-                    p= `算例：${result.folderLabel} · 物理量：${result.quantityLabel}`
-                    img.toolbox-preview(src=result.previewUrl, alt=`${result.quantityLabel} 时空图和径向平均曲线预览`)
-                    h3 下载结果
-                    ul.toolbox-downloads
-                        each file in result.files
-                            li: a(href=file.url, download)= file.label
-            footer.toolbox-footer Python 数值计算来源：Di_spatiotemporal_python；原有 Node.js / Plotly GTC 浏览功能保持独立。
+                div
+                    p.toolbox-eyebrow SMIAO'S TOOLBOX
+                    h1 时空输运分析
+                    p Dᵢ · D𝒻 · Γᵢ · Γ𝒻 — 时空演化、径向平均与物种对比
+                span.toolbox-live-badge 交互绘图
+            .toolbox-workspace
+                aside.toolbox-controls(aria-label='算例与绘图参数')
+                    section.toolbox-case-picker
+                        .toolbox-section-heading
+                            h2 选择算例
+                            button#refresh-folders.toolbox-text-button(type='button') 刷新目录
+                        input#case-search(type='search' placeholder='搜索目录名称或路径…' aria-label='搜索算例')
+                        p#folder-count.toolbox-note 正在获取目录…
+                        #toolbox-cases(role='group' aria-label='点击算例载入数据')
+                        p#selected-path.toolbox-selected-path 尚未选择算例
+                        button#reload-case.toolbox-secondary(type='button' disabled) 重新读取当前算例
+                    form#toolbox-form
+                        fieldset#toolbox-settings(disabled)
+                            legend.sr-only 分析设置
+                            .toolbox-tabs(role='tablist' aria-label='参数类别')
+                                button#tab-analysis(type='button' role='tab' data-toolbox-tab='analysis' aria-controls='pane-analysis' aria-selected='true') 分析
+                                button#tab-physics(type='button' role='tab' data-toolbox-tab='physics' aria-controls='pane-physics' aria-selected='false') 物理参数
+                                button#tab-style(type='button' role='tab' data-toolbox-tab='style' aria-controls='pane-style' aria-selected='false') 图形
+                            #pane-analysis.toolbox-pane(role='tabpanel' aria-labelledby='tab-analysis' data-toolbox-panel='analysis')
+                                label.toolbox-field
+                                    span 物理量
+                                    select(name='quantity')
+                                        option(value='di') Dᵢ 离子扩散系数
+                                        option(value='df') D𝒻 快离子扩散系数
+                                        option(value='gamma') Γᵢ 扩散粒子通量
+                                        option(value='gammaf') Γ𝒻 快离子扩散粒子通量
+                                        option(value='compare') 物种对比
+                                #compare-controls(hidden)
+                                    label.toolbox-field
+                                        span 对比物理量
+                                        select(name='compare_kind')
+                                            option(value='diffusion') Dᵢ / D𝒻
+                                            option(value='gamma') Γᵢ / Γ𝒻
+                                label.toolbox-field
+                                    span 图形版式
+                                    select(name='view')
+                                        option(value='combined') 时空图与平均曲线
+                                        option(value='maps') 仅时空图
+                                        option(value='means') 仅平均曲线
+                                        option(value='i_single') Dᵢ 独立时空图
+                                        option(value='f_single') D𝒻 独立时空图
+                                .toolbox-two-fields
+                                    label.toolbox-field
+                                        span D 的单位
+                                        select(name='units')
+                                            option(value='normalized') T_ref/(eB₀)
+                                            option(value='si') m²/s
+                                    label.toolbox-field
+                                        span 时间轴
+                                        select(name='time_axis')
+                                            option(value='physical') R₀/Cₛ
+                                            option(value='step') 诊断记录
+                                +rangeInputs('mean_rmin', 'mean_rmax', '径向平均区间 · r/a', '按现有网格中心选择，r 加权平均；热图数据保持完整。')
+                                +rangeInputs('time_min', 'time_max', '时间显示范围 · R₀/Cₛ', '始终输入物理时间；仅调整上下图显示范围。')
+                                .toolbox-range
+                                    p.toolbox-label 统计窗口 · 记录号（含端点）
+                                    .toolbox-inline-fields
+                                        input(type='number' name='start' min='1' step='1' required aria-label='统计起始记录')
+                                        input(type='number' name='end' min='1' step='1' required aria-label='统计结束记录')
+                                    p.toolbox-note 窗口均值显示在图外；切换平滑不改变统计。
+                                +numberInput('smooth_window', '显示平滑 · Savitzky–Golay 窗口', '1 表示关闭', 1, 2)
+                                label.toolbox-check
+                                    input(type='checkbox' name='show_time_window' checked)
+                                    span 显示统计窗口标记
+                                label.toolbox-check
+                                    input(type='checkbox' name='check_gradient')
+                                    span 查看密度梯度与通量核对图
+                                label.toolbox-check
+                                    input(type='checkbox' name='extra_di_gamma')
+                                    span 同时查看 Dᵢ 和 Γᵢ 两张单图
+                                p.toolbox-note D𝒻 需要第三物种；Γ𝒻 还需要同算例 profile.dat。Gamma 双轴对比左轴使用 10¹⁹，右轴使用 10¹⁶ m⁻²s⁻¹。
+                            #pane-physics.toolbox-pane(role='tabpanel' aria-labelledby='tab-physics' data-toolbox-panel='physics' hidden)
+                                p.toolbox-note 自动读取 gtc.out，可手动覆盖。浅橙色边框表示采用原程序备用值，请核对。
+                                +numberInput('r0', '大半径 R₀ · m', '', 0)
+                                +numberInput('a', '小半径 a · m', '', 0)
+                                +numberInput('b0', '磁场 B₀ · T', '', 0)
+                                +numberInput('tref_ev', '参考温度 T_ref · eV', '', 0)
+                                +numberInput('nref_19', '参考密度 · 10¹⁹ m⁻³', '未识别 · Γᵢ 需要填写', 0)
+                                +numberInput('tstep', '诊断记录时间间隔 · R₀/Cₛ', '', 0)
+                                p.toolbox-note 时间间隔已含 NDIAG。Gamma 先按各径向点的密度梯度换算，再求 r 加权平均。
+                                button#reset-physics.toolbox-secondary(type='button') 恢复自动参数
+                            #pane-style.toolbox-pane(role='tabpanel' aria-labelledby='tab-style' data-toolbox-panel='style' hidden)
+                                label.toolbox-field
+                                    span 热图配色
+                                    select(name='cmap')
+                                        option(value='gtc') 蓝–白–红
+                                        option(value='soft_bwr') 柔和蓝–白–红
+                                        option(value='bwr') 饱和蓝–白–红
+                                        option(value='jet') Jet
+                                        option(value='viridis') Viridis
+                                +numberInput('color_limit_i', '对称色标上限 · 主图 / D 共色标', '自动', 0)
+                                +numberInput('color_limit_f', '对称色标上限 · Γ𝒻 / 快离子独立图', '自动', 0)
+                                p.toolbox-note D 对比热图共用色标；独立 D 图默认采用各自绝对值的 80% 分位数。色标只影响显示。
+                                +rangeInputs('mean_ymin', 'mean_ymax', '平均曲线纵轴范围', 'Gamma 双轴对比时作用于左轴。', null)
+                                label#gamma-zero-control.toolbox-check(hidden)
+                                    input(type='checkbox' name='align_gamma_zero')
+                                    span Gamma 双纵轴零点对齐
+                                each curve in ['raw', 'smooth']
+                                    .toolbox-curve-style
+                                        label.toolbox-check
+                                            input(type='checkbox' name=(curve === 'raw' ? 'show_raw' : 'show_smooth') checked)
+                                            span= curve === 'raw' ? 'Raw 原始平均曲线' : 'Smoothed 平滑显示曲线'
+                                        .toolbox-two-fields
+                                            label.toolbox-field
+                                                span 颜色（单物理量）
+                                                input(type='color' name=curve+'_color' value=(curve === 'raw' ? '#a6b1bd' : '#2479b2'))
+                                            label.toolbox-field
+                                                span 线型
+                                                select(name=curve+'_dash')
+                                                    option(value='solid') 实线
+                                                    option(value='dash') 虚线
+                                                    option(value='dot') 点线
+                                                    option(value='dashdot') 点划线
+                                            label.toolbox-field
+                                                span 标记
+                                                select(name=curve+'_marker')
+                                                    option(value='none') 无
+                                                    option(value='circle') 圆圈
+                                                    option(value='diamond') 菱形
+                                                    option(value='square') 方形
+                                                    option(value='triangle-up') 上三角
+                                                    option(value='cross') 加号
+                                                    option(value='x') 叉号
+                                            +numberInput(curve+'_markevery', '标记间隔', '1', 1, 1)
+                                .toolbox-two-fields
+                                    +numberInput('font_size', '图中文字大小', '14', 8, 1)
+                                    +numberInput('line_width', '曲线宽度', '1.8', 0.1, 'any')
+                                    +numberInput('title_size', '图表标题字号', '20', 8, 1)
+                                    +numberInput('legend_size', '图例字号', '12', 8, 1)
+                                p.toolbox-note 双击图表标题、轴标题或图例文字可直接编辑；图例可拖动，单击隐藏曲线。右上工具栏保存当前图与数据。
+                                button#reset-style.toolbox-secondary(type='button') 恢复自动标题与图例
+                            .toolbox-actions
+                                label.toolbox-check
+                                    input(type='checkbox' name='auto_redraw' checked)
+                                    span 修改参数后自动重画
+                                button#toolbox-submit(type='submit') 重新绘图
+                                .toolbox-settings-files
+                                    button#save-settings.toolbox-text-button(type='button') 保存设置
+                                    button#import-settings.toolbox-text-button(type='button') 导入设置
+                                    input#settings-file(type='file' accept='.json,application/json' hidden)
+                section.toolbox-canvas(aria-label='图表与统计结果')
+                    .toolbox-result-heading
+                        p#case-info 选择算例后开始分析
+                        p#toolbox-status(role='status' aria-live='polite') 已准备就绪
+                    progress#load-progress(max='1' hidden aria-label='读取算例进度')
+                    p#toolbox-error.toolbox-error(role='alert' hidden)
+                    p#toolbox-warnings.toolbox-warnings(hidden)
+                    #toolbox-empty
+                        span.toolbox-empty-symbol r × t
+                        h2 选一个算例，开始探索输运演化
+                        p 支持四种物理量、物种对比和原位调整。读取后复用数据，缩放、改样式和保存都在图表中完成。
+                    #toolbox-stats(hidden)
+                    p#stats-detail.toolbox-note
+                    #toolbox-plots(hidden)
+            footer.toolbox-footer 计算规则沿用 Di_spatiotemporal_python · r 加权平均 · 平滑只用于显示

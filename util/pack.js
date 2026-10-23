@@ -12,15 +12,14 @@ const fileList = [
     'public/libs',
     'public/shader',
     'public/stylesheets',
-    'python-tools/di-spatiotemporal',
     'public/favicon.ico',
     'public/loading.gif',
     'views',
     '.env_example',
-    'install-python-tools.sh',
     'LICENSE',
     'package.json',
     'README.md',
+    'TOOLBOX_JS_MIGRATION.md',
     'server-prod.js',
     'server-prod.js.LICENSE.txt',
 ];
@@ -57,20 +56,6 @@ async function pack(
                 path.join(packageRoot, filename),
                 { recursive: true }
             );
-        }
-        const pythonWheelhouse = path.join(
-            sourceRoot,
-            'python-tools/di-spatiotemporal/wheelhouse'
-        );
-        try {
-            await lstat(pythonWheelhouse);
-            await cp(
-                pythonWheelhouse,
-                path.join(packageRoot, 'python-tools/di-spatiotemporal/wheelhouse'),
-                { recursive: true }
-            );
-        } catch (err) {
-            if (err.code !== 'ENOENT') throw err;
         }
         // Copies can inherit Windows read-only attributes. Clear them only on
         // the staged tree, leaving source permissions untouched.

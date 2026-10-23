@@ -1,19 +1,18 @@
-# Di 时空分析后端
+# Di 时空分析 Python 参考代码
 
-`plot_Di_spatiotemporal.py` 来自 `Di_spatiotemporal_python`，由 GTC-Visualization 的“smiao 的工具箱”以无窗口模式调用。该网页入口支持 D_i、D_f、Gamma_i 和 Gamma_f，生成 PNG、PDF、SVG、NPZ、JSON。
+`plot_Di_spatiotemporal.py` 来自 `Di_spatiotemporal_python`，在本仓库中保留用于开发时核对 JavaScript 移植的计算结果。生产工具箱使用 `shared/spatiotemporal.js`，发布包排除此目录。
 
-依赖安装：
+只有重新生成 Python 基准或做真实数据对照时才需要安装参考环境依赖：
 
 ```bash
 python -m pip install -r python-tools/di-spatiotemporal/requirements.txt
 ```
 
-离线服务器可使用发布压缩包内的 `wheelhouse/`：
+在仓库根目录执行：
 
 ```bash
-python -m pip install --no-index --find-links python-tools/di-spatiotemporal/wheelhouse -r python-tools/di-spatiotemporal/requirements.txt
+python util/generate-toolbox-reference.py
+node util/check-toolbox-parity.js /path/to/a/GTC-output
 ```
 
-该 wheelhouse 必须按服务器的操作系统、CPU 架构和 Python ABI 生成；安装脚本会先用 wheelhouse 更新 pip，再离线安装依赖。压缩包不包含 Python 解释器。
-
-网页生成结果只写入 `public/toolbox-results/<任务 ID>/`，不会写回 GTC 算例目录。
+完整迁移说明见根目录 `TOOLBOX_JS_MIGRATION.md`。

@@ -15,6 +15,7 @@ module.exports = (_env, argv) => {
             'plot-page': './client/index.js',
             'folder-picker': './client/components/gtc-output-picker.js',
             'input-generator': './client/gtc-input/input-generate.js',
+            toolbox: './client/toolbox/index.js',
         },
         target: 'web',
         output: {

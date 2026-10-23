@@ -42,6 +42,9 @@ jobs:
       - name: Run tests
         run: npm run test:batch
 
+      - name: Check toolbox numerical parity and release packaging
+        run: node --test test/spatiotemporal.test.js test/pack.test.js
+
   build:
     name: Build bundles
     runs-on: ubuntu-latest

@@ -2,7 +2,6 @@ const express = require('express');
 require('dotenv').config();
 const GTCOutput = require('./GTC-output-parser/main.js');
 const path = require('path');
-const fsSync = require('fs');
 const compression = require('compression');
 const FileTree = require('./fileTree.js');
 const fs = require('fs').promises;
@@ -22,6 +21,7 @@ const show_path = process.env.SHOW_PATH == 'true';
 const SCAN_PERIOD = 3600; // scan host_dir every hour
 
 let output = {};
+let toolboxOutputFolders = [];
 const folder_cache = {
     current: new FileTree(),
     timestamp: -1,
@@ -63,53 +63,17 @@ function isWithinDirectory(root, candidate) {
 }
 
 function getDiSpatiotemporalOutputFolders() {
-    const hostRoot = path.resolve(host_dir);
-    const treeParent = path.dirname(hostRoot);
-
-    return folder_cache.current
-        .search('gtc.out')
-        .map(file => {
-            const gtcPath = path.resolve(treeParent, file.path);
-            const directory = path.dirname(gtcPath);
-            if (
-                !isWithinDirectory(hostRoot, directory) ||
-                !fsSync.existsSync(path.join(directory, 'data1d.out'))
-            ) {
-                return null;
-            }
-            const relativePath = path.relative(hostRoot, directory) || '.';
-            return {
-                value: relativePath,
-                label:
-                    relativePath === '.'
-                        ? path.basename(hostRoot)
-                        : relativePath,
-                directory,
-                gtcPath,
-                dataPath: path.join(directory, 'data1d.out'),
-                profilePath: path.join(directory, 'profile.dat'),
-                hasProfile: fsSync.existsSync(
-                    path.join(directory, 'profile.dat')
-                ),
-            };
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.label.localeCompare(b.label));
+    return toolboxOutputFolders;
 }
 
 registerDiSpatiotemporalToolbox(app, {
     getOutputFolders: getDiSpatiotemporalOutputFolders,
-    pythonExecutable:
-        process.env.PYTHON_EXECUTABLE ||
-        (process.platform === 'win32' ? 'python' : 'python3'),
-    pythonScript: path.join(
-        process.cwd(),
-        'python-tools',
-        'di-spatiotemporal',
-        'plot_Di_spatiotemporal.py'
-    ),
-    pythonCwd: path.join(process.cwd(), 'python-tools', 'di-spatiotemporal'),
-    resultsDirectory: path.join(process.cwd(), 'public', 'toolbox-results'),
+    refreshOutputFolders: async () => {
+        if (!folder_cache.scanning) {
+            clearTimeout(folder_cache.pending_id);
+            await scan_host_folder();
+        }
+    },
     viewPath: pugView('toolbox'),
 });
 
@@ -366,6 +330,20 @@ app.use((err, req, res, next) => {
 
 async function getFolderStructure(dir) {
     const fileTree = await FileTree.readFileTree(dir);
+    // Reuse the existing scan instead of hundreds of synchronous NFS stat calls
+    // on every toolbox page, progress poll, and data request.
+    const hostRoot = path.resolve(dir), toolboxFolders = [];
+    function collect(node, prefix) {
+        const directory = path.join(prefix, node.dirname);
+        const names = new Set(node.content.filter(item => typeof item === 'string'));
+        if (names.has('gtc.out') && names.has('data1d.out') && isWithinDirectory(hostRoot, directory)) {
+            const value = path.relative(hostRoot, directory) || '.';
+            toolboxFolders.push({ value, label: value === '.' ? path.basename(hostRoot) : value,
+                directory, hasProfile: names.has('profile.dat') });
+        }
+        for (const child of node.content) if (typeof child !== 'string') collect(child, directory);
+    }
+    collect(fileTree, path.dirname(hostRoot));
     // find out all gtc.out, and their parent folder should be gtc output folder
     const index = [];
     const filtered = fileTree.filter('gtc.out', pathArr => {
@@ -380,12 +358,13 @@ async function getFolderStructure(dir) {
     await Promise.all(
         index.map(async f => {
             const { folder, filePath } = f;
-            pos = path.dirname(dir) === dir ? '' : path.dirname(dir);
+            const pos = path.dirname(dir) === dir ? '' : path.dirname(dir);
             const stat = await fs.stat(path.join(pos, filePath));
             folder.mTimeMs = stat.mtimeMs;
             // folder.path = path.dirname(filePath);
         })
     );
+    toolboxOutputFolders = toolboxFolders.sort((a, b) => a.label.localeCompare(b.label));
     return filtered;
 }
 

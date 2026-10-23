@@ -43,6 +43,8 @@ Node.js 22 or later is required. Building the FFTE WebAssembly binary additional
 | `server/GTC-output-parser/radialTime.js` | Radial-time data from `data1d.out`. |
 | `server/GTC-output-parser/tracking.js` | Particle trajectory files. |
 | `server/batch-data-handler.js` | Batched plot-data API used by summary pages. |
+| `server/toolbox/case-store.js` | Streaming spatiotemporal data parser, binary transport, and bounded case cache. |
+| `shared/spatiotemporal.js` | Pure Float64 numerical port of the Python toolbox; shared by Node and the browser worker. |
 
 ### Browser
 
@@ -60,6 +62,7 @@ Node.js 22 or later is required. Building the FFTE WebAssembly binary additional
 | `client/plotting/summary-generate.js` | Summary data and figures. |
 | `client/plotting/history-recal.js` | Recalculation over the visible History time range. |
 | `client/gtc-input/` | Input form generation and versioned parameter descriptors. |
+| `client/toolbox/` | Native Plotly toolbox UI, plot descriptions, and Web Worker calculations. |
 
 ## Build and change guidance
 

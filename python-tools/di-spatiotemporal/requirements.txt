@@ -1,7 +1,6 @@
 matplotlib>=3.6
 numpy>=1.23
 scipy>=1.9
-# Matplotlib needs these when running on Python < 3.10. Keep them explicit so
-# cross-platform wheelhouse builds do not miss the conditional dependencies.
+# Compatibility dependencies for the development reference on Python < 3.10.
 importlib-resources>=3.2
 zipp>=3.1
