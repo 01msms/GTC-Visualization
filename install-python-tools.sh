@@ -13,4 +13,4 @@ if [ ! -d "$WHEELHOUSE" ]; then
 fi
 
 "$PYTHON_BIN" -m pip install --no-index --find-links "$WHEELHOUSE" --upgrade pip
-"$PYTHON_BIN" -m pip install --no-index --find-links "$WHEELHOUSE" -r "$REQUIREMENTS"
+"$PYTHON_BIN" -m pip install --no-index --find-links "$WHEELHOUSE" --upgrade -r "$REQUIREMENTS"
