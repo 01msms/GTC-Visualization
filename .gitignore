@@ -7,6 +7,7 @@ server-prod.js.LICENSE.txt
 public/libs/plotly
 public/javascripts/
 public/toolbox-results/
+python-tools/di-spatiotemporal/wheelhouse/
 
 *.tar.gz
 

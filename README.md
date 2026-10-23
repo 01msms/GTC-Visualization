@@ -60,6 +60,25 @@ You can also, and I suggest to, use process manager or init system to keep app A
 python -m pip install -r python-tools/di-spatiotemporal/requirements.txt
 ```
 
+如果服务器不能联网，可在有网络的构建机上为目标服务器准备 wheelhouse，再生成带依赖的发布包。下面示例针对 Linux x86_64、CPython 3.11；目标平台参数必须按服务器实际 Python ABI 修改：
+
+```bash
+PYTHON_TARGET_PLATFORM=manylinux2014_x86_64 \
+PYTHON_TARGET_VERSION=311 \
+PYTHON_TARGET_IMPLEMENTATION=cp \
+PYTHON_TARGET_ABI=cp311 \
+node util/prepare-python-offline.js && node util/pack.js
+```
+
+不设置这些参数时，会下载构建机当前平台可用的 wheel。将生成的 `GTC-Visualization.tar.gz` 上传并解压后，在服务器运行：
+
+```bash
+sh install-python-tools.sh
+npm start
+```
+
+安装脚本使用压缩包内的 wheelhouse，通过 `pip --no-index` 安装，不访问网络。服务器仍需预装与 wheelhouse 匹配的 Python（示例为 Python 3.11），并且需要本地 pip；此包不包含 Python 解释器。`PYTHON_EXECUTABLE` 可用于指定服务器上的解释器路径。
+
 默认在 Windows 使用 `python`，其他系统使用 `python3`。如果 Python 命令不在 PATH 中，可在 `.env` 中设置 `PYTHON_EXECUTABLE` 为解释器的可执行文件路径。运行 Node 服务的账号需要能读取 `HOST_DIR` 中的 GTC 文件，并能写入项目下的 `public/toolbox-results/`。
 
 ## What's behind the scene
