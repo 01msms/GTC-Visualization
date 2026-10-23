@@ -12,6 +12,7 @@ const fileList = [
     'public/libs',
     'public/shader',
     'public/stylesheets',
+    'python-tools/di-spatiotemporal',
     'public/favicon.ico',
     'public/loading.gif',
     'views',

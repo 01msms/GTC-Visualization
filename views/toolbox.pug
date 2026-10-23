@@ -1,0 +1,66 @@
+doctype html
+html(lang="zh-CN")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0")
+        script(src="javascripts/theme.js")
+        script(src="toolbox.js" defer)
+        link(rel="stylesheet", href="stylesheets/theme.css")
+        link(rel="stylesheet", href="stylesheets/toolbox.css")
+        title smiao 的工具箱 · GTC-Visualization
+    body.home-page
+        main.toolbox-page
+            .theme-settings(data-theme-control)
+            a.toolbox-back(href="/") ← 返回 GTC 输出目录
+            header.toolbox-header
+                p.toolbox-eyebrow GTC-VISUALIZATION
+                h1 smiao 的工具箱
+                p 读取已扫描到的 GTC 算例，生成 D_i、D_f、Γ_i 或 Γ_f 时空图及径向平均曲线。
+            form#toolbox-form(method="POST", action="/toolbox")
+                .toolbox-form-grid
+                    label(for="output-folder") GTC 算例目录
+                    select#output-folder(name="output_folder", required)
+                        if outputs.length
+                            each output in outputs
+                                option(value=output.value data-has-profile=output.hasProfile selected=(form.output_folder === output.value))= output.label + (output.hasProfile ? " · 有 profile.dat" : "")
+                        else
+                            option(value="") 尚未找到同时包含 gtc.out 和 data1d.out 的目录
+                    label(for="quantity") 物理量
+                    select#quantity(name="quantity")
+                        option(value="di" selected=(form.quantity === "di")) D_i 扩散系数
+                        option(value="gamma" selected=(form.quantity === "gamma")) Γ_i 粒子通量
+                        option(value="df" selected=(form.quantity === "df")) D_f 快离子扩散系数
+                        option(value="gammaf" selected=(form.quantity === "gammaf")) Γ_f 快离子粒子通量（需要 profile.dat）
+                    label(for="units") 扩散系数单位
+                    select#units(name="units")
+                        option(value="normalized" selected=(form.units !== "si")) T_ref/(eB₀)（归一化）
+                        option(value="si" selected=(form.units === "si")) m²/s（SI）
+                    label(for="mean-rmin") 径向平均范围 r/a
+                    .toolbox-inline-fields
+                        input#mean-rmin(type="number", name="mean_rmin", min="0", step="any", placeholder="最小值", value=form.mean_rmin)
+                        input#mean-rmax(type="number", name="mean_rmax", min="0", step="any", placeholder="最大值", value=form.mean_rmax)
+                    label(for="time-min") 时间显示范围 R₀/Cₛ
+                    .toolbox-inline-fields
+                        input#time-min(type="number", name="time_min", min="0", step="any", placeholder="起点", value=form.time_min)
+                        input#time-max(type="number", name="time_max", min="0", step="any", placeholder="终点", value=form.time_max)
+                    label(for="start-record") 统计记录范围（包含端点）
+                    .toolbox-inline-fields
+                        input#start-record(type="number", name="start", min="1", step="1", placeholder="起始记录", value=form.start)
+                        input#end-record(type="number", name="end", min="1", step="1", placeholder="结束记录", value=form.end)
+                    label(for="smooth-window") 平滑窗口（正奇数，1 表示关闭）
+                    input#smooth-window(type="number", name="smooth_window", min="1", max="501", step="2", value=form.smooth_window || "1")
+                p.toolbox-help 统计范围留空时沿用 Python 工具默认记录（1600–2000，超出数据末尾时自动收至末条记录）。D_f / Γ_f 需要 data1d.out 含第三物种；Γ_f 还需要同一算例目录中的 profile.dat。
+                if error
+                    p.toolbox-error(role="alert")= error
+                button#toolbox-submit(type="submit", disabled=!outputs.length) 生成时空图
+                p#toolbox-progress(role="status", aria-live="polite")
+            if result
+                section.toolbox-result(aria-labelledby="toolbox-result-title")
+                    h2#toolbox-result-title 图已生成
+                    p= `算例：${result.folderLabel} · 物理量：${result.quantityLabel}`
+                    img.toolbox-preview(src=result.previewUrl, alt=`${result.quantityLabel} 时空图和径向平均曲线预览`)
+                    h3 下载结果
+                    ul.toolbox-downloads
+                        each file in result.files
+                            li: a(href=file.url, download)= file.label
+            footer.toolbox-footer Python 数值计算来源：Di_spatiotemporal_python；原有 Node.js / Plotly GTC 浏览功能保持独立。

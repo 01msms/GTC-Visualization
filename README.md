@@ -50,5 +50,17 @@ This node app provides a simple way to inspect GTC(Gyrokinetic Toroidal Code) ou
    ```
 You can also, and I suggest to, use process manager or init system to keep app ALWAYS running.
 
+## smiao 的工具箱（可选）
+
+首页的“smiao 的工具箱”可从扫描到的算例中选择包含 `gtc.out` 和 `data1d.out` 的目录，生成 D_i、D_f、Gamma_i 或 Gamma_f 的时空图及径向平均曲线。Gamma_f 还需要同一目录中的 `profile.dat`。生成结果提供 PNG、PDF、SVG、NPZ 和 JSON 下载。
+
+该功能调用随项目打包的 Python 数值脚本。需要 Python 3.10 或更新版本，以及 NumPy、SciPy 和 Matplotlib：
+
+```bash
+python -m pip install -r python-tools/di-spatiotemporal/requirements.txt
+```
+
+默认在 Windows 使用 `python`，其他系统使用 `python3`。如果 Python 命令不在 PATH 中，可在 `.env` 中设置 `PYTHON_EXECUTABLE` 为解释器的可执行文件路径。运行 Node 服务的账号需要能读取 `HOST_DIR` 中的 GTC 文件，并能写入项目下的 `public/toolbox-results/`。
+
 ## What's behind the scene
 This app use [express.js](http://www.expressjs.com) as server framework, and plot figures with the help of [Plotly.js](https://plotly.com/javascript/), which relies on [MathJax](https://www.mathjax.org/) to render expressions. Most, if not all figure types are from [Huasheng Xie](http://hsxie.github.io/)'s Matlab program.

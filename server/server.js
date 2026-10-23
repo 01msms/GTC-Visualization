@@ -2,10 +2,12 @@ const express = require('express');
 require('dotenv').config();
 const GTCOutput = require('./GTC-output-parser/main.js');
 const path = require('path');
+const fsSync = require('fs');
 const compression = require('compression');
 const FileTree = require('./fileTree.js');
 const fs = require('fs').promises;
 const { registerBatchPlotDataRoute } = require('./batch-data-handler.js');
+const registerDiSpatiotemporalToolbox = require('./di-spatiotemporal-toolbox.js');
 const pug = require('pug');
 
 const { spawn } = require('child_process');
@@ -48,6 +50,67 @@ function wrap(func) {
 
 app.get('/', (req, res) => {
     res.send(pug.renderFile(pugView('index')));
+});
+
+function isWithinDirectory(root, candidate) {
+    const relative = path.relative(root, candidate);
+    return (
+        relative === '' ||
+        (relative !== '..' &&
+            !relative.startsWith(`..${path.sep}`) &&
+            !path.isAbsolute(relative))
+    );
+}
+
+function getDiSpatiotemporalOutputFolders() {
+    const hostRoot = path.resolve(host_dir);
+    const treeParent = path.dirname(hostRoot);
+
+    return folder_cache.current
+        .search('gtc.out')
+        .map(file => {
+            const gtcPath = path.resolve(treeParent, file.path);
+            const directory = path.dirname(gtcPath);
+            if (
+                !isWithinDirectory(hostRoot, directory) ||
+                !fsSync.existsSync(path.join(directory, 'data1d.out'))
+            ) {
+                return null;
+            }
+            const relativePath = path.relative(hostRoot, directory) || '.';
+            return {
+                value: relativePath,
+                label:
+                    relativePath === '.'
+                        ? path.basename(hostRoot)
+                        : relativePath,
+                directory,
+                gtcPath,
+                dataPath: path.join(directory, 'data1d.out'),
+                profilePath: path.join(directory, 'profile.dat'),
+                hasProfile: fsSync.existsSync(
+                    path.join(directory, 'profile.dat')
+                ),
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+registerDiSpatiotemporalToolbox(app, {
+    getOutputFolders: getDiSpatiotemporalOutputFolders,
+    pythonExecutable:
+        process.env.PYTHON_EXECUTABLE ||
+        (process.platform === 'win32' ? 'python' : 'python3'),
+    pythonScript: path.join(
+        process.cwd(),
+        'python-tools',
+        'di-spatiotemporal',
+        'plot_Di_spatiotemporal.py'
+    ),
+    pythonCwd: path.join(process.cwd(), 'python-tools', 'di-spatiotemporal'),
+    resultsDirectory: path.join(process.cwd(), 'public', 'toolbox-results'),
+    viewPath: pugView('toolbox'),
 });
 
 app.post(
