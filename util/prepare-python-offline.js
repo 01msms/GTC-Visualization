@@ -12,7 +12,15 @@ const wheelhouse = path.join(
 const isWindows = process.platform === 'win32';
 const defaultPython = isWindows ? 'python' : 'python3';
 const python = process.env.PYTHON_EXECUTABLE || defaultPython;
-const args = ['-m', 'pip', 'download', '--only-binary=:all:', '--dest', wheelhouse];
+const args = [
+    '-m',
+    'pip',
+    'download',
+    '--only-binary=:all:',
+    '--dest',
+    wheelhouse,
+    'pip==24.3.1',
+];
 
 const target = {
     platform: process.env.PYTHON_TARGET_PLATFORM,

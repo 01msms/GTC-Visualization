@@ -54,19 +54,19 @@ You can also, and I suggest to, use process manager or init system to keep app A
 
 首页的“smiao 的工具箱”可从扫描到的算例中选择包含 `gtc.out` 和 `data1d.out` 的目录，生成 D_i、D_f、Gamma_i 或 Gamma_f 的时空图及径向平均曲线。Gamma_f 还需要同一目录中的 `profile.dat`。生成结果提供 PNG、PDF、SVG、NPZ 和 JSON 下载。
 
-该功能调用随项目打包的 Python 数值脚本。需要 Python 3.10 或更新版本，以及 NumPy、SciPy 和 Matplotlib：
+该功能调用随项目打包的 Python 数值脚本。需要 Python 3.8 或更新版本，以及 NumPy、SciPy 和 Matplotlib：
 
 ```bash
 python -m pip install -r python-tools/di-spatiotemporal/requirements.txt
 ```
 
-如果服务器不能联网，可在有网络的构建机上为目标服务器准备 wheelhouse，再生成带依赖的发布包。下面示例针对 Linux x86_64、CPython 3.11；目标平台参数必须按服务器实际 Python ABI 修改：
+如果服务器不能联网，可在有网络的构建机上为目标服务器准备 wheelhouse，再生成带依赖的发布包。下面示例针对服务器的 Linux aarch64、CPython 3.8；目标平台参数必须按服务器实际 Python ABI 修改：
 
 ```bash
-PYTHON_TARGET_PLATFORM=manylinux2014_x86_64 \
-PYTHON_TARGET_VERSION=311 \
+PYTHON_TARGET_PLATFORM=manylinux2014_aarch64 \
+PYTHON_TARGET_VERSION=38 \
 PYTHON_TARGET_IMPLEMENTATION=cp \
-PYTHON_TARGET_ABI=cp311 \
+PYTHON_TARGET_ABI=cp38 \
 node util/prepare-python-offline.js && node util/pack.js
 ```
 
@@ -77,7 +77,7 @@ sh install-python-tools.sh
 npm start
 ```
 
-安装脚本使用压缩包内的 wheelhouse，通过 `pip --no-index` 安装，不访问网络。服务器仍需预装与 wheelhouse 匹配的 Python（示例为 Python 3.11），并且需要本地 pip；此包不包含 Python 解释器。`PYTHON_EXECUTABLE` 可用于指定服务器上的解释器路径。
+安装脚本先从 wheelhouse 离线更新 pip，再安装 NumPy、SciPy 和 Matplotlib，不访问网络。服务器仍需预装与 wheelhouse 匹配的 Python（示例为 Python 3.8）；此包不包含 Python 解释器。`PYTHON_EXECUTABLE` 可用于指定服务器上的解释器路径。
 
 默认在 Windows 使用 `python`，其他系统使用 `python3`。如果 Python 命令不在 PATH 中，可在 `.env` 中设置 `PYTHON_EXECUTABLE` 为解释器的可执行文件路径。运行 Node 服务的账号需要能读取 `HOST_DIR` 中的 GTC 文件，并能写入项目下的 `public/toolbox-results/`。
 

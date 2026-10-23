@@ -14,6 +14,6 @@ python -m pip install -r python-tools/di-spatiotemporal/requirements.txt
 python -m pip install --no-index --find-links python-tools/di-spatiotemporal/wheelhouse -r python-tools/di-spatiotemporal/requirements.txt
 ```
 
-该 wheelhouse 必须由 `npm run pack:offline` 按服务器的操作系统、CPU 架构和 Python ABI 生成；压缩包不包含 Python 解释器。
+该 wheelhouse 必须按服务器的操作系统、CPU 架构和 Python ABI 生成；安装脚本会先用 wheelhouse 更新 pip，再离线安装依赖。压缩包不包含 Python 解释器。
 
 网页生成结果只写入 `public/toolbox-results/<任务 ID>/`，不会写回 GTC 算例目录。
