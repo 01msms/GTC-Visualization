@@ -154,7 +154,8 @@ class FileTree {
      */
     search(filter, prefix = '') {
         let prefix_new = path.join(prefix, this.dirname);
-        filterFun = typeof filter === 'string' ? (str) => str === filter : filter;
+        const filterFun =
+            typeof filter === 'string' ? str => str === filter : filter;
         return this.content.reduce((acc, curr) => {
             if (typeof curr === 'string') {
                 if (filterFun(curr)) acc.push({ name: curr, path: path.join(prefix_new, curr) });
