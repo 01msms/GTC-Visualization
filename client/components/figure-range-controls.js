@@ -23,6 +23,7 @@
  */
 
 import state from '../control/state.js';
+import { frequencyYRange } from '../plotting/history-frequency-range.js';
 
 // ------------------------------------------------------------------
 //  DOM helpers
@@ -203,8 +204,15 @@ function updateHistoryModeRangeFromRelayout(figure, eventData) {
         return;
     }
 
-    state.hist_mode_range[targetField] =
-        extractRelayoutRange(eventData, 'x') ?? getFigureAxisRange(figure, 'x');
+    const selected = extractRelayoutRange(eventData, 'x');
+    if (!selected && !eventData?.['xaxis.autorange']) return;
+    const visible = selected ?? getFigureAxisRange(figure, 'x');
+    state.hist_mode_range[targetField] = visible;
+    if (targetField === 'frequency' && visible &&
+        !extractRelayoutRange(eventData, 'y') && !eventData?.['yaxis.autorange']) {
+        const range = frequencyYRange(figure.data, visible);
+        if (range) Plotly.relayout(figure, { 'yaxis.range': range });
+    }
 }
 
 /**
@@ -268,6 +276,8 @@ function applyFigureRangeFromForm(figure, form) {
             return;
         }
 
+        if (minValue === formatRangeValue(currentRange?.[0]) &&
+            maxValue === formatRangeValue(currentRange?.[1])) continue;
         updates[`${axisName}axis.range`] = [nextMin, nextMax];
         updates[`${axisName}axis.autorange`] = false;
     }

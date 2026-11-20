@@ -10,14 +10,16 @@ import { themedPlot } from '../shared/plot-theme.js';
 import { createPlotConfig } from '../components/figure-data-download.js';
 import { getFFT } from '../shared/fft.js';
 import { interleave } from '../shared/util.js';
+import { frequencyYRange } from './history-frequency-range.js';
 
 export async function historyMode(figures, interval1 = null, interval2 = null) {
     // `interval1`/`interval2` are user-selected zoom ranges (as fractions of
     // the total data length) coming from the rangesliders. When they are
     // null (i.e. the initial call) we fall back to the conventional
-    // measurement window [0.43, 0.98] and show the full data extent.
+    // measurement window [0.43, 0.98]. Frequency follows the growth window
+    // until the user chooses a separate frequency range.
     const measure1 = interval1 ?? [0.43, 0.98];
-    const measure2 = interval2 ?? [0.43, 0.98];
+    const measure2 = interval2 ?? measure1;
 
     // deconstructing figures
     let [componentsFig, growthFig, freqFig, spectralFig] = figures;
@@ -81,24 +83,35 @@ export async function historyMode(figures, interval1 = null, interval2 = null) {
         type: 'scatter',
         mode: 'lines',
     };
-    freqFig.data[2] = {
-        x: [measurePts[0].x, measurePts[1].x],
-        y: [measurePts[0].y, measurePts[1].y],
-        type: 'scatter',
-        line: { dash: 'dot', color: 'rgb(245, 10, 10)', width: 3 },
-        markers: { color: 'rgb(255, 0, 0)', size: 8 },
-    };
-    freqFig.layout.title.text = `$\\omega=${omega.toPrecision(5)}$`;
+    if (Number.isFinite(omega)) {
+        freqFig.data[2] = {
+            x: [measurePts[0].x, measurePts[1].x],
+            y: [measurePts[0].y, measurePts[1].y],
+            type: 'scatter',
+            line: { dash: 'dot', color: 'rgb(245, 10, 10)', width: 3 },
+            mode: 'lines+markers',
+            marker: { color: 'rgb(255, 0, 0)', size: 8 },
+        };
+    } else {
+        freqFig.data.length = 2;
+    }
+    const omegaText = Number.isFinite(omega) ? omega.toPrecision(5) : 'unavailable';
+    freqFig.layout.title.text = Number.isFinite(omega)
+        ? `$\\omega=${omegaText}$`
+        : 'ω unavailable (fewer than two peaks)';
     {
         const xs = freqFig.data[0].x;
         const len = xs[xs.length - 1];
-        freqFig.layout.xaxis.range = interval2
-            ? [interval2[0] * len, interval2[1] * len]
-            : [xs[0], len];
+        const visible = measure2.map(fraction => fraction * len);
+        freqFig.layout.xaxis.range = visible;
         freqFig.layout.xaxis.autorange = false;
+        const range = frequencyYRange(freqFig.data, visible);
+        freqFig.layout.yaxis.range = range;
+        freqFig.layout.yaxis.autorange = !range;
     }
     freqFig.layout.xaxis.rangeslider = {
         bgcolor: 'rgb(200,200,210)',
+        yaxis: { rangemode: 'auto' },
     };
 
     // spectral figure
@@ -115,7 +128,7 @@ export async function historyMode(figures, interval1 = null, interval2 = null) {
 
     if (navigator.clipboard) {
         await navigator.clipboard.writeText(
-            `${gamma.toPrecision(5)}, ${omega.toPrecision(5)}`
+            `${gamma.toPrecision(5)}, ${omegaText}`
         );
     }
 }
@@ -307,10 +320,7 @@ export function historyPhiRms(
  * @returns {{gamma: number, measurePts:{x:number, y:number}[]}}} growth rate
  */
 export function cal_gamma(ys, dt, interval) {
-    let [tIni, tEnd] = interval;
-
-    let tIniIndex = Math.floor(tIni * ys.length);
-    let tEndIndex = Math.floor(tEnd * ys.length);
+    const [tIniIndex, tEndIndex] = sampleBounds(ys.length, interval);
 
     let gamma =
         (Math.log(ys[tEndIndex]) - Math.log(ys[tIniIndex])) /
@@ -325,6 +335,15 @@ export function cal_gamma(ys, dt, interval) {
     };
 }
 
+// Inclusive sample indices. Sample i is at (i + 1) * dt.
+function sampleBounds(length, [start, end]) {
+    const tolerance = 4 * Number.EPSILON * length;
+    return [
+        Math.max(0, Math.ceil(start * length - tolerance) - 1),
+        Math.min(length - 1, Math.floor(end * length + tolerance) - 1),
+    ];
+}
+
 /**
  * Calculate the frequency of the array
  *
@@ -335,19 +354,12 @@ export function cal_gamma(ys, dt, interval) {
  * @returns {{omega:number, measurePts:{x:number, y:number}[]}}
  */
 export function cal_omega_r(yReals, yImages, dt, interval) {
-    let [tIni, tEnd] = interval;
-
-    let tIniIndex = Math.floor(tIni * yReals.length);
-    let tEndIndex = Math.floor(tEnd * yReals.length);
+    const [tIniIndex, tEndIndex] = sampleBounds(yReals.length, interval);
 
     const findMaximuns = ys => {
         const maximums = [];
         const section = [];
-        for (
-            let i = Math.max(tIniIndex, 1);
-            i < Math.min(tEndIndex, yReals.length - 1);
-            ++i
-        ) {
+        for (let i = tIniIndex + 1; i < tEndIndex; ++i) {
             section.push((ys[i - 1] + ys[i] + ys[i + 1]) / 3);
         }
         section.forEach((y, i, arr) => {
@@ -355,9 +367,15 @@ export function cal_omega_r(yReals, yImages, dt, interval) {
                 i > 0 &&
                 i < arr.length - 1 &&
                 y > arr[i - 1] &&
-                y > arr[i + 1]
+                (y > arr[i + 1] ||
+                    (y === arr[i + 1] && y > arr[i + 2]))
             ) {
-                maximums.push([i + tIniIndex, y]);
+                // Interpolate a peak between samples, including a peak
+                // centered halfway between two equal adjacent samples.
+                const leftDrop = y - arr[i - 1];
+                const rightDrop = y - arr[i + 1];
+                const offset = 0.5 * (leftDrop - rightDrop) / (leftDrop + rightDrop);
+                maximums.push([i + tIniIndex + 1 + offset, y]);
             }
         });
         return maximums;
@@ -374,7 +392,7 @@ export function cal_omega_r(yReals, yImages, dt, interval) {
     let p1 = { x: null, y: null };
     let p2 = { x: null, y: null };
     if (periodNum < 1) {
-        omega = 0;
+        omega = Number.NaN;
     } else {
         p1.x = (maximums[0][0] + 1) * dt;
         p1.y = maximums[0][1];
@@ -399,8 +417,10 @@ export function cal_omega_r(yReals, yImages, dt, interval) {
  * @returns {{x: Array<Number>, y: Array<Number>}} power spectrum
  */
 export async function cal_spectrum(reals, images, timeStep, interval) {
-    const [t_ini, t_end] = interval.map(t => Math.floor(t * reals.length));
+    const [t_ini, last] = sampleBounds(reals.length, interval);
+    const t_end = last + 1;
     const len = t_end - t_ini;
+    if (len < 2) return { x: [], y: [] };
     const halfLen = Math.floor(len / 2);
 
     const fft = await getFFT();
